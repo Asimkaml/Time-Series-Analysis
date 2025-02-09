@@ -1,6 +1,6 @@
 # Time-Series-Analysis-
 These are the concepts i have learned in my time-Series analysis learing
-(the details are AI generated)
+(the details are mostly AI generated)
 
 # **Time Series Analysis in Python**
 
@@ -25,6 +25,21 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 ```
+Loading and Preparing Time Series Data
+A time series dataset typically contains timestamps and values (e.g., stock prices).
+```python
+import pandas as pd  
+
+# Load stock data  
+df = pd.read_csv('stock.csv', parse_dates=['Date'], index_col='Date')  
+
+# Display first few rows  
+print(df.head())
+```  
+Why Use parse_dates and index_col?
+✅ parse_dates=['Date'] → Converts the "Date" column into datetime format for time-based analysis.
+✅ index_col='Date' → Sets the "Date" column as the index, which is essential for resampling and shifting.
+
 
 ## **1. Generating Time Series Data**
 
@@ -45,16 +60,26 @@ Time series data often has missing values. We can handle them using different me
 # Introduce missing values
 df.loc[df.sample(frac=0.2).index, 'value'] = np.nan
 
-# Filling missing values
-df_filled = df.fillna(method='ffill')  # Forward Fill
-df_filled = df.fillna(method='bfill')  # Backward Fill
-df_interpolated = df.interpolate(method='linear')  # Interpolation
-print(df_interpolated)
+# Check for missing values  
+print(df.isnull().sum())  
+
+# Forward fill: Fill missing values with the last known value  
+df.ffill(inplace=True)  
+
+# Backward fill: Fill missing values with the next available value  
+df.bfill(inplace=True)  
+Linear interpolation: Estimate missing values based on trend  
+df.interpolate(method='linear', inplace=True)
 ```
+Why Use Different Filling Methods?
+✅ ffill() → Works well for stock prices, assuming the last value remains valid.
+✅ bfill() → Fills gaps when future data is available.
+✅ interpolate() → Useful when values change gradually, like temperature data.
+
 
 ## **3. Shifting Data (Past and Future)**
 
-Shifting is useful for creating lag features or forecasting:
+Shifting allows us to compare current values with past/future values, useful in trend analysis & forecasting.
 
 ```python
 # Shifting data forward (future shift)
@@ -62,55 +87,49 @@ df['future_value'] = df['value'].shift(-1)
 
 # Shifting data backward (past shift)
 df['past_value'] = df['value'].shift(1)
-print(df)
 ```
+Why Use Shifting?
+✅ Helps in predictive modeling by comparing today's price with tomorrow’s.
+✅ Useful for calculating returns and detecting trends.
 
-## **4. Percentage Change (**``**)**
+## **4. Percentage Change (**`pct_change()`**)**
 
 `pct_change()` calculates the percentage change between consecutive data points:
-
+shows the rate of change in stock prices over time.
 ```python
-# Percentage Change
-df['pct_change'] = df['value'].pct_change()
-print(df)
+df['Daily_Return'] = df['Close'].pct_change()
 ```
 
-🔹 **Use Case:** Identifying trends in stock prices, sales, etc.
+🔹 **Use Case:** Identifying trends, growth rates in stock prices, sales, etc.
 
-## **5. Normalization Techniques**
-
-Normalization scales data between a range to make different features comparable.
-
-### **Using Min-Max Normalization**
+## **5. Normalizing Data for Comparison**
+Normalization scales values for easier comparison across different stocks.
 
 ```python
-df['normalized'] = (df['value'] - df['value'].min()) / (df['value'].max() - df['value'].min())
-print(df)
+# Min-Max Normalization  
+df['Normalized_Close'] = (df['Close'] - df['Close'].min()) / (df['Close'].max() - df['Close'].min())  
+
+
+df['Norm_Sub'] = df['Close'].sub(df['Close'].min()).div(df['Close'].max() - df['Close'].min())  
+df['Norm_Mul'] = df['Close'].mul(2)  # Example: Double all values
 ```
-
-### **Using **``**, **``**, and **``
-
-```python
-# Subtracting mean
-df['sub_normalized'] = df['value'].sub(df['value'].mean())
-
-# Dividing by standard deviation
-df['div_normalized'] = df['value'].div(df['value'].std())
-
-# Multiplication scaling
-df['mul_scaled'] = df['value'].mul(0.1)
-print(df)
-```
+Why Normalize?
+✅ Allows comparison between stocks with different price ranges.
+✅ Helps machine learning models process data effectively.
 
 ## **6. Changing Frequency (Resampling, Upsampling, Downsampling)**
 
+### ** Resampling(changing)
+Financial data is often recorded daily, but we may need weekly or monthly trends.
+```python
+df_weekly = df.resample('W').mean()  # Convert daily to weekly
+```
 ### **Downsampling (Reducing Frequency)**
 
 Aggregates data over larger intervals (e.g., daily → weekly):
-
 ```python
 df_downsampled = df.resample('W').mean()
-print(df_downsampled)
+df_weekly = df.resample('W').mean()  # Convert daily to weekly  
 ```
 
 ### **Upsampling (Increasing Frequency)**
@@ -118,8 +137,8 @@ print(df_downsampled)
 Fills missing values after increasing frequency:
 
 ```python
-df_upsampled = df.resample('H').asfreq().fillna(method='ffill')
-print(df_upsampled)
+df_upsampled = df.resample('H').asfreq()  # Convert daily to hourly (creates NaNs)  
+df_upsampled = df_upsampled.interpolate(method='linear')  # Fill missing values
 ```
 
 ### **Custom Resampling with Aggregation**
@@ -128,7 +147,9 @@ print(df_upsampled)
 df_resampled = df.resample('2D').agg({'value': 'sum'})
 print(df_resampled)
 ```
-
+Why Change Frequency?
+✅ Upsampling → Creates finer granularity (e.g., converting daily data to hourly).
+✅ Downsampling → Reduces noise & improves trend detection (e.g., monthly stock analysis).
 ## **7. Interpolation for Missing Data**
 
 Interpolation estimates missing values based on surrounding data:
@@ -141,7 +162,10 @@ df_interpolated = df.interpolate(method='linear')
 df_poly = df.interpolate(method='polynomial', order=2)
 print(df_interpolated)
 ```
-
+Why Use Interpolation?
+✅ Stock market closure days (e.g., weekends, holidays).
+✅ Filling missing sensor data in IoT applications.
+✅ Smoothens data for plotting & analysis.
 ## **Conclusion**
 
 This repository serves as a quick reference for handling **time series data** in Python. By mastering these techniques, you can effectively **analyze trends, predict future values, and clean missing data** in time-dependent datasets.
